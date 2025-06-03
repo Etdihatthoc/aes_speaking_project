@@ -1,0 +1,13 @@
+# Bỏ các file checkpoint, log, output
+*.pt
+*.ckpt
+*.log
+wandb/
+__pycache__/
+*.pyc
+.env
+.DS_Store
+venv/
+.idea/
+output/
+*.ipynb_checkpoints

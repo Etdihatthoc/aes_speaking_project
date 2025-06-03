@@ -1,0 +1,59 @@
+# Configuration for AES Speaking Scoring System
+
+# Data paths
+data:
+  train_csv_path: "/mnt/disk1/quangminh/AES_project/train_pro.csv"  # Update with your actual paths
+  val_csv_path: "/mnt/disk1/quangminh/AES_project/val_pro.csv"
+  test_csv_path: "/mnt/disk1/quangminh/AES_project/test_pro.csv"
+# Model settings
+model:
+  pretrained_model: "google-bert/bert-base-uncased"  # Options: google-bert/bert-base-uncased, google-bert/bert-large-uncased
+  type: "vocabulary"  # Options: vocabulary, grammar, content
+  max_length: 512
+  dropout: 0.1
+  hidden_dim: 768
+  
+# Training settings
+training:
+  num_epochs: 20
+  batch_size: 8
+  learning_rate: 0.000005
+  optimizer: "adamw"
+  weight_decay: 0.01
+  example_size: 50  # Number of reference samples for multi-sample voting
+  checkpoint_dir: "./checkpoints"
+  log_dir: "./logs"
+  save_best_l1: true
+  save_best_qwk: true
+  
+  # Loss function
+  loss_function: "mse"  # Options: mse, l1, smooth_l1
+  
+  # Learning rate scheduler
+  warmup_steps: 500  # Number of warmup steps
+  scheduler_type: "linear"  # linear, cosine, polynomial
+  
+  # Training techniques
+  gradient_clip_norm: 1.0  # Max norm for gradient clipping
+  dropout_rate: 0.5  # Additional dropout for regularization
+  label_smoothing: 0.05  # Label smoothing factor (0.0 = no smoothing)
+  early_stopping_patience: 10  # Epochs to wait before early stopping
+  
+  # Logging
+  log_every_n_steps: 10  # Log training metrics every N steps
+  
+# Score settings
+score:
+  min_score: 0.0
+  max_score: 10.0
+  increment: 0.5
+  
+# Wandb settings
+wandb:
+  project_name: "npcr-english-speaking-scoring"
+  key: "072fb112587c6b4507f5ec59e575d234c3e22649"
+  
+# Device settings
+device:
+  cuda_device: "cuda"
+  num_workers: 40

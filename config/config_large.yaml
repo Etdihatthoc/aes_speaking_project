@@ -1,0 +1,59 @@
+# Configuration for AES Speaking Scoring with BERT-Large
+
+# Data paths
+data:
+  train_csv_path: "/mnt/disk1/quangminh/AES_project/train_pro.csv"  # Update with your actual paths
+  val_csv_path: "/mnt/disk1/quangminh/AES_project/val_pro.csv"
+  test_csv_path: "/mnt/disk1/quangminh/AES_project/test_pro.csv"
+  
+# Model settings
+model:
+  pretrained_model: "google-bert/bert-large-uncased"  # BERT Large model
+  type: "vocabulary"  # Options: vocabulary, grammar, content
+  max_length: 300  # Reduced from 512 for speaking transcripts
+  dropout: 0.3  # Lower dropout for BERT Large (it has better regularization)
+  hidden_dim: 1024  # BERT Large has 1024 hidden dimensions
+  
+# Training settings  
+training:
+  num_epochs: 20  # Fewer epochs needed for BERT Large
+  batch_size: 4  # Smaller batch size due to larger model
+  learning_rate: 0.000005  # Lower LR for BERT Large (5e-6)
+  optimizer: "adamw"
+  weight_decay: 0.01
+  example_size: 30  # Fewer reference samples to save memory
+  checkpoint_dir: "./checkpoints_large"
+  log_dir: "./logs_large"
+  save_best_l1: true
+  save_best_qwk: true
+  
+  # Loss function
+  loss_function: "mse"  # MSE as in original paper
+  
+  # Learning rate scheduler - Adjusted for BERT Large
+  warmup_steps: 500  # Fewer warmup steps
+  scheduler_type: "linear"
+  
+  # Training techniques - Adjusted for larger model
+  gradient_clip_norm: 0.5  # More aggressive clipping for stability
+  dropout_rate: 0.3
+  label_smoothing: 0.1  # Add smoothing to prevent overconfidence
+  early_stopping_patience: 7  # Earlier stopping for large model
+  
+  # Logging
+  log_every_n_steps: 10  # More frequent logging
+  
+# Score settings for speaking assessment
+score:
+  min_score: 0.0
+  max_score: 10.0
+  increment: 0.5
+  
+wandb:
+  project_name: "npcr-english-speaking-scoring"
+  key: "072fb112587c6b4507f5ec59e575d234c3e22649"
+  
+# Device settings
+device:
+  cuda_device: "cuda"
+  num_workers: 40
