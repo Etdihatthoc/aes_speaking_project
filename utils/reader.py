@@ -24,7 +24,18 @@ class SpeakingDataReader:
         """Read CSV file and return data"""
         logger.info(f"Reading data from: {csv_path}")
         df = pd.read_csv(csv_path)
-        df =  df.sample(frac=1, random_state=42).reset_index(drop=True)
+        
+        # Remove any rows with NaN values
+        original_len = len(df)
+        df = df.dropna(subset=['text', self.score_type])
+        if len(df) < original_len:
+            logger.warning(f"Dropped {original_len - len(df)} rows with NaN values")
+        
+        # Remove empty texts
+        df = df[df['text'].str.strip() != '']
+        
+        # Shuffle
+        df = df.sample(frac=1, random_state=42).reset_index(drop=True)
         
         # Get text and scores based on type
         texts = df['text'].tolist()
@@ -38,23 +49,50 @@ class SpeakingDataReader:
         else:
             raise ValueError(f"Unknown score type: {self.score_type}")
         
-        # Convert scores to float
+        # Convert scores to float and validate
         scores = [float(score) for score in scores]
         
-        logger.info(f"Loaded {len(texts)} samples")
+        # Validate texts and scores
+        valid_indices = []
+        for i, (text, score) in enumerate(zip(texts, scores)):
+            if isinstance(text, str) and len(text.strip()) > 0 and not np.isnan(score):
+                valid_indices.append(i)
+        
+        texts = [texts[i] for i in valid_indices]
+        scores = [scores[i] for i in valid_indices]
+        
+        logger.info(f"Loaded {len(texts)} valid samples")
         logger.info(f"Score range: {min(scores)} - {max(scores)}")
         
         return texts, scores
     
     def tokenize_texts(self, texts):
         """Tokenize texts using the pretrained tokenizer"""
+        # Add validation
+        valid_texts = []
+        for text in texts:
+            if isinstance(text, str) and len(text.strip()) > 0:
+                valid_texts.append(text)
+            else:
+                valid_texts.append("empty text")  # Fallback
+                
         encoded = self.tokenizer(
-            texts,
+            valid_texts,
             padding='max_length',
             truncation=True,
             max_length=self.max_length,
-            return_tensors='pt'
+            return_tensors='pt',
+            add_special_tokens=True
         )
+        
+        # Ensure no empty sequences
+        attention_sum = encoded['attention_mask'].sum(dim=1)
+        if (attention_sum == 0).any():
+            logger.warning("Found empty sequences after tokenization!")
+            # Replace empty sequences with at least [CLS] and [SEP] tokens
+            empty_mask = attention_sum == 0
+            encoded['attention_mask'][empty_mask, :2] = 1
+            
         return encoded['input_ids'], encoded['attention_mask']
     
     def prepare_data(self, csv_path):
@@ -70,6 +108,9 @@ class SpeakingDataReader:
             self.min_score, 
             self.max_score
         )
+        
+        # Validate normalized scores
+        normalized_scores = np.clip(normalized_scores, 0.0, 1.0)
         
         # Convert to tensors
         scores_tensor = torch.FloatTensor(normalized_scores)
@@ -119,21 +160,24 @@ def get_data_loaders(config):
         train_dataset,
         batch_size=config['training']['batch_size'],
         shuffle=True,
-        num_workers=config['device']['num_workers']
+        num_workers=config['device']['num_workers'],
+        pin_memory=True
     )
     
     val_loader = torch.utils.data.DataLoader(
         val_dataset,
         batch_size=config['training']['batch_size'],
         shuffle=False,
-        num_workers=config['device']['num_workers']
+        num_workers=config['device']['num_workers'],
+        pin_memory=True
     )
     
     test_loader = torch.utils.data.DataLoader(
         test_dataset,
         batch_size=config['training']['batch_size'],
         shuffle=False,
-        num_workers=config['device']['num_workers']
+        num_workers=config['device']['num_workers'],
+        pin_memory=True
     )
     
     return train_loader, val_loader, test_loader, train_data, val_data, test_data

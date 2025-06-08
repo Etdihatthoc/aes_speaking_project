@@ -12,17 +12,26 @@ model:
   max_length: 512
   dropout: 0.1
   hidden_dim: 768
+
+# Multi-scale settings
+multi_scale:
+  use_multi_scale: true
+  segment_sizes: [30, 50, 70, 90, 110]  # Different segment sizes to explore
+  lstm_hidden_size: 256
+  lstm_num_layers: 1
+  lstm_dropout: 0.1
+  attention_size: 256
   
 # Training settings
 training:
   num_epochs: 20
-  batch_size: 8
+  batch_size: 1
   learning_rate: 0.000005
   optimizer: "adamw"
   weight_decay: 0.01
   example_size: 50  # Number of reference samples for multi-sample voting
-  checkpoint_dir: "./checkpoints"
-  log_dir: "./logs"
+  checkpoint_dir: "./checkpoints_multi_scale"
+  log_dir: "./logs_multi_scale"
   save_best_l1: true
   save_best_qwk: true
   
@@ -55,5 +64,5 @@ wandb:
   
 # Device settings
 device:
-  cuda_device: "cpu"
+  cuda_device: "cuda:0"  # Specify the CUDA device to use
   num_workers: 40

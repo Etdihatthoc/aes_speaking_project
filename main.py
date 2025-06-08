@@ -26,7 +26,7 @@ from networks.core_networks import NPCRModel, NPCRModelWithMultiSampleVoting
 from evaluator import Evaluator
 
 
-def train_epoch(model, train_loader, optimizer, criterion, scheduler, device, epoch, config, loss_monitor, global_step):
+def train_epoch(model, train_loader, optimizer, criterion, scheduler, device, epoch, config, loss_monitor, global_step, logger):
     """Train for one epoch with enhanced logging and techniques"""
     model.train()
     total_loss = 0
@@ -49,12 +49,18 @@ def train_epoch(model, train_loader, optimizer, criterion, scheduler, device, ep
             relative_scores = relative_scores.to(device)
             
             # Add label smoothing if configured
-            if config['training']['label_smoothing'] > 0:
-                smoothing = config['training']['label_smoothing']
-                relative_scores = relative_scores * (1 - smoothing) + 0.5 * smoothing
+            label_smoothing = float(config['training'].get('label_smoothing', 0.0))
+            if label_smoothing > 0:
+                relative_scores = relative_scores * (1 - label_smoothing) + 0.5 * label_smoothing
             
             # Forward pass
             outputs = model(input_ids1, attention_mask1, input_ids2, attention_mask2)
+            
+            # Check for NaN in outputs
+            if torch.isnan(outputs).any():
+                logger.warning(f"NaN detected in model outputs at batch {batch_idx}")
+                continue
+                
             loss = criterion(outputs, relative_scores)
             
         else:  # Single mode
@@ -67,21 +73,33 @@ def train_epoch(model, train_loader, optimizer, criterion, scheduler, device, ep
             
             # Forward pass
             outputs = model(input_ids, attention_mask)
+            
+            # Check for NaN in outputs
+            if torch.isnan(outputs).any():
+                logger.warning(f"NaN detected in model outputs at batch {batch_idx}")
+                continue
+                
             loss = criterion(outputs, scores)
             
             # Store for metrics (using MAE for evaluation)
             predictions.extend(outputs.detach().cpu().numpy())
             targets.extend(scores.detach().cpu().numpy())
         
+        # Check for NaN in loss
+        if torch.isnan(loss):
+            logger.warning(f"NaN loss detected at batch {batch_idx}, skipping...")
+            continue
+        
         # Backward pass
         optimizer.zero_grad()
         loss.backward()
         
         # Gradient clipping
-        if config['training']['gradient_clip_norm'] > 0:
+        grad_clip_norm = float(config['training'].get('gradient_clip_norm', 1.0))
+        if grad_clip_norm > 0:
             torch.nn.utils.clip_grad_norm_(
                 model.parameters(), 
-                config['training']['gradient_clip_norm']
+                grad_clip_norm
             )
         
         optimizer.step()
@@ -94,14 +112,15 @@ def train_epoch(model, train_loader, optimizer, criterion, scheduler, device, ep
         global_step += 1
         
         # Update progress bar
-        current_lr = scheduler.get_last_lr()[0] if scheduler else config['training']['learning_rate']
+        current_lr = scheduler.get_last_lr()[0] if scheduler else float(config['training']['learning_rate'])
         progress_bar.set_postfix({
             'loss': step_loss,
             'lr': f'{current_lr:.2e}'
         })
         
         # Log to wandb every N steps
-        if global_step % config['training']['log_every_n_steps'] == 0:
+        log_every_n = int(config['training'].get('log_every_n_steps', 10))
+        if global_step % log_every_n == 0:
             wandb.log({
                 'train_step_loss': step_loss,
                 'learning_rate': current_lr,
@@ -109,7 +128,9 @@ def train_epoch(model, train_loader, optimizer, criterion, scheduler, device, ep
                 'epoch': epoch
             })
     
-    avg_loss = total_loss / len(train_loader)
+    # Calculate average loss
+    num_batches = len(train_loader)
+    avg_loss = total_loss / num_batches if num_batches > 0 else 0.0
     
     # Calculate training metrics if in single mode
     train_metrics = None
@@ -134,7 +155,6 @@ def train_epoch(model, train_loader, optimizer, criterion, scheduler, device, ep
         train_metrics['mae'] = mae
     
     return avg_loss, train_metrics, global_step
-
 
 def main():
     # Parse arguments
@@ -271,7 +291,7 @@ def main():
                 logger.info("Training with pairwise data...")
                 train_loss_pair, _, global_step = train_epoch(
                     model, pairwise_train_loader, optimizer, criterion, 
-                    scheduler, device, epoch, config, loss_monitor, global_step
+                    scheduler, device, epoch, config, loss_monitor, global_step, logger
                 )
                 logger.info(f"Pairwise training loss: {train_loss_pair:.4f}")
                 
@@ -289,7 +309,7 @@ def main():
             logger.info("Training with single mode...")
             train_loss_single, train_metrics, global_step = train_epoch(
                 model, train_loader, optimizer, criterion,
-                scheduler, device, epoch, config, loss_monitor, global_step
+                scheduler, device, epoch, config, loss_monitor, global_step, logger
             )
             logger.info(f"Single mode training loss: {train_loss_single:.4f}")
             

@@ -35,20 +35,20 @@ def get_logger(name, level=logging.INFO, log_file=None):
     
     return logger
 
-
 def load_config(config_path):
     """Load configuration from YAML file"""
     with open(config_path, 'r') as f:
         config = yaml.safe_load(f)
     
-    # Convert string values to appropriate types
-    config['training']['num_epochs'] = int(config['training']['num_epochs'])
-    config['training']['batch_size'] = int(config['training']['batch_size'])
-    config['training']['learning_rate'] = float(config['training']['learning_rate'])
-    config['training']['weight_decay'] = float(config['training']['weight_decay'])
-    config['training']['example_size'] = int(config['training']['example_size'])
+    # Convert string values to appropriate types - be very explicit
+    # Training parameters
+    config['training']['num_epochs'] = int(config['training'].get('num_epochs', 20))
+    config['training']['batch_size'] = int(config['training'].get('batch_size', 8))
+    config['training']['learning_rate'] = float(config['training'].get('learning_rate', 5e-6))
+    config['training']['weight_decay'] = float(config['training'].get('weight_decay', 0.01))
+    config['training']['example_size'] = int(config['training'].get('example_size', 50))
     
-    # New parameters
+    # New parameters with explicit conversion
     config['training']['warmup_steps'] = int(config['training'].get('warmup_steps', 500))
     config['training']['gradient_clip_norm'] = float(config['training'].get('gradient_clip_norm', 1.0))
     config['training']['dropout_rate'] = float(config['training'].get('dropout_rate', 0.5))
@@ -56,18 +56,39 @@ def load_config(config_path):
     config['training']['early_stopping_patience'] = int(config['training'].get('early_stopping_patience', 10))
     config['training']['log_every_n_steps'] = int(config['training'].get('log_every_n_steps', 10))
     
-    config['model']['max_length'] = int(config['model']['max_length'])
-    config['model']['dropout'] = float(config['model']['dropout'])
-    config['model']['hidden_dim'] = int(config['model']['hidden_dim'])
+    # Model parameters
+    config['model']['max_length'] = int(config['model'].get('max_length', 512))
+    config['model']['dropout'] = float(config['model'].get('dropout', 0.1))
+    config['model']['hidden_dim'] = int(config['model'].get('hidden_dim', 768))
     
-    config['score']['min_score'] = float(config['score']['min_score'])
-    config['score']['max_score'] = float(config['score']['max_score'])
-    config['score']['increment'] = float(config['score']['increment'])
+    # Score parameters
+    config['score']['min_score'] = float(config['score'].get('min_score', 0.0))
+    config['score']['max_score'] = float(config['score'].get('max_score', 10.0))
+    config['score']['increment'] = float(config['score'].get('increment', 0.5))
     
-    config['device']['num_workers'] = int(config['device']['num_workers'])
+    # Device parameters
+    config['device']['num_workers'] = int(config['device'].get('num_workers', 4))
+    
+    # Multi-scale parameters (if present)
+    if 'multi_scale' in config:
+        config['multi_scale']['use_multi_scale'] = bool(config['multi_scale'].get('use_multi_scale', True))
+        if 'segment_sizes' in config['multi_scale']:
+            # Ensure segment_sizes is a list of integers
+            segment_sizes = config['multi_scale']['segment_sizes']
+            if isinstance(segment_sizes, str):
+                segment_sizes = [int(x.strip()) for x in segment_sizes.split(',')]
+            elif isinstance(segment_sizes, list):
+                segment_sizes = [int(x) for x in segment_sizes]
+            config['multi_scale']['segment_sizes'] = segment_sizes
+        else:
+            config['multi_scale']['segment_sizes'] = [30, 50, 70, 90, 110]
+            
+        config['multi_scale']['lstm_hidden_size'] = int(config['multi_scale'].get('lstm_hidden_size', 256))
+        config['multi_scale']['lstm_num_layers'] = int(config['multi_scale'].get('lstm_num_layers', 1))
+        config['multi_scale']['lstm_dropout'] = float(config['multi_scale'].get('lstm_dropout', 0.1))
+        config['multi_scale']['attention_size'] = int(config['multi_scale'].get('attention_size', 256))
     
     return config
-
 
 def create_directories(config):
     """Create necessary directories"""
