@@ -63,7 +63,7 @@ def spearman(y_true, y_pred):
     return corr if not np.isnan(corr) else 0.0
 
 # --- Đường dẫn đến file CSV (thay thành file thật của bạn) ---
-csv_path = 'results.csv'
+csv_path = '/mnt/disk1/SonDinh/SonDinh/aes_speaking_project/eval/results_test_stella.csv'
 df = pd.read_csv(csv_path)
 
 # Trích cột ground truth và predictions

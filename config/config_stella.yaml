@@ -1,0 +1,75 @@
+# Configuration for AES Speaking Scoring with BERT-Large
+
+# Data paths
+data:
+  train_csv_path: "/mnt/disk1/quangminh/AES_project/train_pro.csv"  # Update with your actual paths
+  val_csv_path: "/mnt/disk1/quangminh/AES_project/val_pro.csv"
+  test_csv_path: "/mnt/disk1/quangminh/AES_project/test_pro.csv"
+  
+# Model settings
+model:
+  pretrained_model: "dunzhang/stella_en_400M_v5"  # Stella model
+  model_type: "stella"  # Specify model type for correct loading
+  type: "vocabulary"  # Score type: vocabulary, grammar, content
+  max_length: 256  # Stella handles sequences well up to 512
+  dropout: 0.35  # Slightly higher for Stella
+  hidden_dim: 1024  # Stella embedding dimension
+  
+# Training settings optimized for Stella
+training:
+  num_epochs: 20  # More epochs as Stella trains faster
+  batch_size: 12 # Can use larger batch with Stella (more efficient)
+  learning_rate: 0.000003  # Stella benefits from slightly higher LR
+  optimizer: "adamw"
+  weight_decay: 0.01
+  example_size: 20  # Can use more examples efficiently
+  checkpoint_dir: "./checkpoints_stella"
+  log_dir: "./logs_stella"
+  save_best_l1: true
+  save_best_qwk: true
+  
+  # Loss function
+  loss_function: "l1"
+  
+  # Learning rate scheduler
+  warmup_steps: 500  # Stella needs less warmup
+  scheduler_type: "cosine"  # Cosine works better with Stella
+  
+  # Regularization for Stella
+  gradient_clip_norm: 1.0
+  dropout_rate: 0.35
+  label_smoothing: 0.15  # Higher smoothing for embedding models
+  early_stopping_patience: 10
+  
+  # Logging
+  log_every_n_steps: 10
+  
+# Score settings
+score:
+  min_score: 0.0
+  max_score: 10.0
+  increment: 0.5
+  
+wandb:
+  project_name: "npcr-english-speaking-scoring"
+  key: "072fb112587c6b4507f5ec59e575d234c3e22649"
+  
+# Device settings
+device:
+  cuda_device: "cuda"
+  num_workers: 40
+  
+# Stella-specific optimizations
+stella:
+  # Similarity threshold for pair selection
+  similarity_threshold: 0.85  # Don't use pairs too similar
+  
+  # Embedding normalization
+  normalize_embeddings: true
+  
+  # Temperature for contrastive learning
+  temperature: 0.07
+  
+  # Use cosine similarity features
+  use_similarity_features: true
+  

@@ -158,7 +158,7 @@ def main():
     wandb.init(
         project=config['wandb']['project_name'],
         config=config,
-        name=f"npcr_{config['model']['type']}_large_{timestamp}"
+        name=f"npcr_{config['model']['type']}_{timestamp}"
     )
     
     # Set device
@@ -195,8 +195,21 @@ def main():
     
     # Initialize model
     logger.info("Initializing model...")
-    model = NPCRModel(config)
+    
+    # Check model type
+    model_type = config['model'].get('model_type', 'bert')
+    
+    if model_type == 'stella' or 'stella' in config['model']['pretrained_model'].lower():
+        logger.info("Using Stella model architecture")
+        from networks.stella_npcr import StellaNPCRModel
+        model = StellaNPCRModel(config)
+    else:
+        logger.info("Using standard BERT architecture")
+        model = NPCRModel(config)
+    
     model = model.to(device)
+    logger.info(f"Model loaded: {config['model']['pretrained_model']}")
+    logger.info(f"Total parameters: {sum(p.numel() for p in model.parameters()):,}")
     
     # Initialize optimizer
     optimizer = torch.optim.AdamW(

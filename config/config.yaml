@@ -55,5 +55,5 @@ wandb:
   
 # Device settings
 device:
-  cuda_device: "cuda"
+  cuda_device: "cpu"
   num_workers: 40

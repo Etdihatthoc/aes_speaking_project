@@ -1,2 +1,2 @@
 # -*- coding: utf-8 -*-
-from .core_networks import NPCRModel, NPCRModelWithMultiSampleVoting
+from .core_networks_2 import NPCRModel, NPCRModelWithMultiSampleVoting

@@ -2,8 +2,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from transformers import AutoModel, AutoTokenizer
-from sentence_transformers import SentenceTransformer
+from transformers import AutoModel
 
 
 class NPCRModel(nn.Module):
@@ -14,17 +13,10 @@ class NPCRModel(nn.Module):
         
         # Load pretrained model
         self.pretrained_model = config['model']['pretrained_model']
+        self.embedding = AutoModel.from_pretrained(self.pretrained_model)
         
-        # Check if using Stella or other sentence transformer
-        if 'stella' in self.pretrained_model.lower() or 'sentence-transformers' in self.pretrained_model:
-            self.use_sentence_transformer = True
-            self.embedding = SentenceTransformer(self.pretrained_model)
-            # Stella outputs 1024-dim embeddings
-            self.hidden_dim = self.embedding.get_sentence_embedding_dimension()
-        else:
-            self.use_sentence_transformer = False
-            self.embedding = AutoModel.from_pretrained(self.pretrained_model)
-            self.hidden_dim = self.embedding.config.hidden_size
+        # Get hidden dimension from pretrained model
+        self.hidden_dim = self.embedding.config.hidden_size
         
         # Neural network layers
         self.dropout = nn.Dropout(config['model']['dropout'])
@@ -53,43 +45,13 @@ class NPCRModel(nn.Module):
     
     def get_essay_representation(self, input_ids, attention_mask):
         """Get essay representation using pretrained model"""
-        if self.use_sentence_transformer:
-            # For Stella/SentenceTransformer
-            # Need to handle batch processing
-            batch_size = input_ids.size(0)
-            embeddings = []
-            
-            # Process each sample in batch
-            for i in range(batch_size):
-                # Get the actual length (remove padding)
-                mask = attention_mask[i].bool()
-                tokens = input_ids[i][mask]
-                
-                # Stella expects raw text or tokens, we'll use the embedding directly
-                # Note: This is a simplified approach, in production you might want to decode back to text
-                with torch.no_grad():
-                    # Get embeddings using the model's encode method
-                    # We need to pass through the transformer's forward method
-                    outputs = self.embedding._modules['0'].auto_model(
-                        input_ids=input_ids[i:i+1],
-                        attention_mask=attention_mask[i:i+1]
-                    )
-                    # Apply pooling
-                    embeddings_i = self.embedding._modules['0'].pooling(
-                        outputs, 
-                        attention_mask[i:i+1]
-                    )
-                    embeddings.append(embeddings_i['sentence_embedding'])
-            
-            essay_repr = torch.cat(embeddings, dim=0)
-        else:
-            # For regular BERT-style models
-            outputs = self.embedding(
-                input_ids=input_ids,
-                attention_mask=attention_mask
-            )
-            # Use [CLS] token representation
-            essay_repr = outputs.last_hidden_state[:, 0, :]
+        outputs = self.embedding(
+            input_ids=input_ids,
+            attention_mask=attention_mask
+        )
+        
+        # Use [CLS] token representation
+        essay_repr = outputs.last_hidden_state[:, 0, :]  # Shape: (batch_size, hidden_dim)
         
         return essay_repr
     

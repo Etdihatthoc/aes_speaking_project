@@ -17,7 +17,7 @@ model:
 # Training settings  
 training:
   num_epochs: 20  # Fewer epochs needed for BERT Large
-  batch_size: 4  # Smaller batch size due to larger model
+  batch_size: 12  # Smaller batch size due to larger model
   learning_rate: 0.000005  # Lower LR for BERT Large (5e-6)
   optimizer: "adamw"
   weight_decay: 0.01
