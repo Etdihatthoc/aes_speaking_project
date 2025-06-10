@@ -1,55 +1,48 @@
-# Configuration for AES Speaking Scoring System
+# Configuration for Multi-Scale NPCR Speaking Scoring System
 
 # Data paths
 data:
   train_csv_path: "/mnt/disk1/quangminh/AES_project/train_pro.csv"  # Update with your actual paths
   val_csv_path: "/mnt/disk1/quangminh/AES_project/val_pro.csv"
   test_csv_path: "/mnt/disk1/quangminh/AES_project/test_pro.csv"
-# Model settings
-model:
-  pretrained_model: "google-bert/bert-base-uncased"  # Options: google-bert/bert-base-uncased, google-bert/bert-large-uncased
-  type: "vocabulary"  # Options: vocabulary, grammar, content
-  max_length: 512
-  dropout: 0.1
-  hidden_dim: 768
 
-# Multi-scale settings
-multi_scale:
-  use_multi_scale: true
-  segment_sizes: [30, 50, 70, 90, 110]  # Different segment sizes to explore
-  lstm_hidden_size: 256
-  lstm_num_layers: 1
-  lstm_dropout: 0.1
-  attention_size: 256
+# Model settings - optimized for multi-scale architecture
+model:
+  pretrained_model: "google-bert/bert-base-uncased"  # BERT for multi-scale encoding
+  model_type: "bert"  # Specify model type
+  type: "vocabulary"  # Score type: vocabulary, grammar, content
+  max_length: 512  # Longer sequences for better segment processing
+  dropout: 0.3  # Higher dropout for more complex model
+  hidden_dim: 768  # This will be updated automatically by multi-scale encoder
   
-# Training settings
+# Training settings - adjusted for multi-scale complexity
 training:
-  num_epochs: 20
-  batch_size: 1
-  learning_rate: 0.000005
+  num_epochs: 25  # More epochs for multi-scale training
+  batch_size: 64  # Smaller batch size due to model complexity
+  learning_rate: 0.000002  # Lower learning rate for stability (2e-6)
   optimizer: "adamw"
   weight_decay: 0.01
-  example_size: 50  # Number of reference samples for multi-sample voting
-  checkpoint_dir: "./checkpoints_multi_scale"
-  log_dir: "./logs_multi_scale"
+  example_size: 10  # Fewer reference samples to manage memory
+  checkpoint_dir: "./checkpoints_multiscale"
+  log_dir: "./logs_multiscale"
   save_best_l1: true
   save_best_qwk: true
   
   # Loss function
-  loss_function: "mse"  # Options: mse, l1, smooth_l1
+  loss_function: "l1"  # MSE as in original NPCR paper
   
-  # Learning rate scheduler
-  warmup_steps: 500  # Number of warmup steps
-  scheduler_type: "linear"  # linear, cosine, polynomial
+  # Learning rate scheduler - more conservative for multi-scale
+  warmup_steps: 1000  # More warmup for complex model
+  scheduler_type: "linear"
   
-  # Training techniques
-  gradient_clip_norm: 1.0  # Max norm for gradient clipping
-  dropout_rate: 0.5  # Additional dropout for regularization
-  label_smoothing: 0.05  # Label smoothing factor (0.0 = no smoothing)
-  early_stopping_patience: 10  # Epochs to wait before early stopping
+  # Training techniques - enhanced for stability
+  gradient_clip_norm: 0.5  # More aggressive clipping for multi-scale
+  dropout_rate: 0.3
+  label_smoothing: 0  # Some smoothing for regularization
+  early_stopping_patience: 15  # More patience for complex model
   
   # Logging
-  log_every_n_steps: 10  # Log training metrics every N steps
+  log_every_n_steps: 5  # More frequent logging to monitor complex training
   
 # Score settings
 score:
@@ -59,10 +52,31 @@ score:
   
 # Wandb settings
 wandb:
-  project_name: "npcr-english-speaking-scoring"
+  project_name: "multiscale-npcr-speaking-scoring"
   key: "072fb112587c6b4507f5ec59e575d234c3e22649"
   
 # Device settings
 device:
-  cuda_device: "cuda:0"  # Specify the CUDA device to use
-  num_workers: 40
+  cuda_device: "cuda"
+  num_workers: 40  # Reduced workers to prevent memory issues
+
+# Multi-scale specific settings
+multiscale:
+  # Segment sizes for segment-scale processing
+  segment_sizes: [50, 100, 150]  # Different segment lengths
+  
+  # LSTM settings for segment processing
+  lstm_hidden_size: 768  # Match BERT hidden size
+  attention_dim: 768  # Attention dimension
+  
+  # Processing settings
+  max_segments_per_essay: 10  # Limit segments to prevent memory issues
+  segment_overlap: 0  # No overlap between segments for now
+  
+  # Training balance
+  doc_token_weight: 1.0  # Weight for document + token scale loss
+  segment_weight: 1.0  # Weight for segment scale loss
+  
+  # Memory optimization
+  gradient_checkpointing: true  # Enable gradient checkpointing
+  segment_batch_size: 2  # Process segments in smaller batches

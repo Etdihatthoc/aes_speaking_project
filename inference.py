@@ -193,7 +193,7 @@ class SpeakingScoringInference:
                 scores.append(score)
         else:
             # Batch processing for single mode
-            batch_size = 16
+            batch_size = 64
             for i in tqdm(range(0, len(texts), batch_size), desc="Batch scoring"):
                 batch_texts = texts[i:i+batch_size]
                 

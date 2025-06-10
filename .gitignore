@@ -2,6 +2,8 @@
 *.pt
 *.ckpt
 *.log
+*.json
+*.csv
 wandb/
 __pycache__/
 *.pyc
